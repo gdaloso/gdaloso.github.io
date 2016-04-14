@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>PokeDex</title>
+
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+        :root {
+            font-size: 16px;
+            color: blue;
+        }
+         img, div, input {
+            width: 100%;
+            height: auto;
+            font-size: 1.5em;
+            display: inline-block;
+            padding-top: 10px;
+        }
+        </style>
+    </head>
+    <body>
+
+        <input type="file" onchange="previewFile()"> <br />
+        <img src="" alt="Image preview...">
+
+        <div id="results"></div>
+
+        <script   src="https://code.jquery.com/jquery-2.2.3.min.js"   integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo="   crossorigin="anonymous"></script>
+
+        <script type="text/javascript">
+            function previewFile() {
+              var preview = document.querySelector('img');
+              var file    = document.querySelector('input[type=file]').files[0];
+              var reader  = new FileReader();
+
+              reader.addEventListener("load", function () {
+                preview.src = reader.result;
+
+                var str = reader.result;
+                str = str.substring(str.indexOf("base64,") + 7);
+
+                vision(str);
+              }, false);
+
+              if (file) {
+                reader.readAsDataURL(file);
+              }
+            }
+
+
+            function vision(str) {
+                url = 'https://vision.googleapis.com/v1/images:annotate';
+                url += '?key=' + 'AIzaSyBkVwwBAAqAbpXhAetLRjXIY3UHueJuo20';
+
+                payload = {
+                    requests: [
+                        {
+                            features: [
+                                {
+                                    type: "LABEL_DETECTION"
+                                }
+                            ],
+                            image: {
+                                content: str
+                            }
+                        }
+                    ]
+                }
+
+                document.querySelector('#results').innerHTML = 'Sending...';
+
+                $.ajax({
+                    type: 'POST',
+                    url: url,
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    data: JSON.stringify(payload)
+
+                }).done(function( data ) {
+                    description_list = [];
+
+                    if(data.responses){
+                        for(var i=0; i<data.responses.length; i++){
+                            if(data.responses[i]['labelAnnotations']){
+                                label_list = data.responses[i]['labelAnnotations'];
+                                for(var j=0; j<label_list.length; j++){
+                                    description_list.push({'name': label_list[j]['description'], 'score': label_list[j]['score']});
+                                }
+                            }
+
+                        }
+                    }
+                    else {
+                        alert('no responses');
+                    }
+
+                    var html_stuff = '';
+                    for(var i=0; i<description_list.length; i++){
+                        html_stuff += '<div class="prediction">' + description_list[i].name + ':' + ' <span class="score">' + parseInt(description_list[i].score * 100) + '%' + '</span></div>';
+                    }
+
+                    document.querySelector('#results').innerHTML = html_stuff;
+                });
+            }
+        </script>
+
+    </body>
+</html>
